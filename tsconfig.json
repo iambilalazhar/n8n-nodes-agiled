@@ -12,5 +12,11 @@
     "target": "ES2022",
     "types": ["node"]
   },
-  "include": ["credentials/**/*.ts", "index.ts", "nodes/**/*.ts", "shared/**/*.ts"]
+  "include": [
+    "credentials/**/*.ts",
+    "index.ts",
+    "nodes/**/*.ts",
+    "shared/**/*.ts",
+    "types/**/*.d.ts"
+  ]
 }
