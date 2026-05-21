@@ -1,0 +1,38 @@
+{
+  "name": "@agiled/n8n-nodes-agiled",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Agiled public API nodes for n8n.",
+  "keywords": [
+    "n8n-community-node-package"
+  ],
+  "license": "UNLICENSED",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "register-client": "bun run scripts/register-client.ts",
+    "test": "bun run typecheck",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "files": [
+    "dist"
+  ],
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [
+      "dist/credentials/AgiledOAuth2Api.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/Agiled/Agiled.node.js",
+      "dist/nodes/AgiledTrigger/AgiledTrigger.node.js"
+    ]
+  },
+  "peerDependencies": {
+    "n8n-workflow": ">=2.16.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.1.0",
+    "n8n-workflow": "2.16.0",
+    "typescript": "5.9.3"
+  }
+}
