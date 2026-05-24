@@ -76,6 +76,12 @@ declare module "n8n-workflow" {
 
   export interface IWebhookFunctions {
     getBodyData(): IDataObject
+    getHeaderData(): IDataObject
+    getRequestObject(): {
+      body?: unknown
+      rawBody?: Buffer | string
+    }
+    getWorkflowStaticData(type: "node"): IDataObject
     helpers: {
       returnJsonArray(data: IDataObject[]): INodeExecutionData[]
     }

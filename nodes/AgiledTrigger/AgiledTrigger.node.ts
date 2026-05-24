@@ -1,3 +1,4 @@
+import { createHmac, timingSafeEqual } from "node:crypto"
 import type {
   IDataObject,
   IHookFunctions,
@@ -13,7 +14,10 @@ import { agiledApiRequest, unwrapData } from "../../shared/transport"
 type StaticData = {
   events?: string[]
   subscriptionId?: string
+  webhookSecret?: string
 }
+
+const MAX_WEBHOOK_AGE_SECONDS = 5 * 60
 
 function formatPayload(payload: IDataObject, event: string) {
   const data =
@@ -37,6 +41,51 @@ function sameEvents(left?: string[], right?: string[]) {
     Array.isArray(right) &&
     left.length === right.length &&
     left.every((event, index) => event === right[index])
+  )
+}
+
+function headerValue(headers: IDataObject, name: string) {
+  const value = headers[name] ?? headers[name.toLowerCase()]
+  if (Array.isArray(value)) return value[0]
+  return typeof value === "string" ? value : undefined
+}
+
+function rawRequestBody(request: { body?: unknown; rawBody?: Buffer | string }) {
+  if (typeof request.rawBody === "string") return request.rawBody
+  if (Buffer.isBuffer(request.rawBody)) return request.rawBody.toString("utf8")
+  return JSON.stringify(request.body ?? {})
+}
+
+function isFreshTimestamp(timestamp: string) {
+  const parsed = Number(timestamp)
+  return (
+    Number.isFinite(parsed) &&
+    Math.abs(Math.floor(Date.now() / 1000) - parsed) <= MAX_WEBHOOK_AGE_SECONDS
+  )
+}
+
+function signatureMatches({
+  body,
+  secret,
+  signature,
+  timestamp,
+}: {
+  body: string
+  secret: string
+  signature: string
+  timestamp: string
+}) {
+  if (!/^[a-f0-9]{64}$/i.test(signature)) return false
+
+  const expected = createHmac("sha256", secret)
+    .update(`${timestamp}.${body}`)
+    .digest("hex")
+  const expectedBuffer = Buffer.from(expected, "hex")
+  const signatureBuffer = Buffer.from(signature, "hex")
+
+  return (
+    expectedBuffer.length === signatureBuffer.length &&
+    timingSafeEqual(expectedBuffer, signatureBuffer)
   )
 }
 
@@ -88,7 +137,9 @@ export class AgiledTrigger implements INodeType {
         const events = this.getNodeParameter("events") as string[]
 
         return Boolean(
-          staticData.subscriptionId && sameEvents(staticData.events, events),
+          staticData.subscriptionId &&
+            staticData.webhookSecret &&
+            sameEvents(staticData.events, events),
         )
       },
 
@@ -96,7 +147,10 @@ export class AgiledTrigger implements INodeType {
         const staticData = this.getWorkflowStaticData("node") as StaticData
         const events = this.getNodeParameter("events") as string[]
 
-        if (staticData.subscriptionId && !sameEvents(staticData.events, events)) {
+        if (
+          staticData.subscriptionId &&
+          (!staticData.webhookSecret || !sameEvents(staticData.events, events))
+        ) {
           await agiledApiRequest.call(
             this,
             "DELETE",
@@ -117,7 +171,14 @@ export class AgiledTrigger implements INodeType {
           },
         )
         const subscription = unwrapData(response) as IDataObject
+        const webhookSecret =
+          typeof subscription.secret === "string" ? subscription.secret : ""
+        if (!webhookSecret) {
+          throw new Error("Agiled did not return a webhook secret.")
+        }
+
         staticData.subscriptionId = String(subscription.id)
+        staticData.webhookSecret = webhookSecret
         staticData.events = events
 
         return true
@@ -135,6 +196,7 @@ export class AgiledTrigger implements INodeType {
         }
 
         delete staticData.subscriptionId
+        delete staticData.webhookSecret
         delete staticData.events
 
         return true
@@ -144,6 +206,30 @@ export class AgiledTrigger implements INodeType {
 
   async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
     const body = this.getBodyData() as IDataObject
+    const headers = this.getHeaderData()
+    const request = this.getRequestObject() as {
+      body?: unknown
+      rawBody?: Buffer | string
+    }
+    const staticData = this.getWorkflowStaticData("node") as StaticData
+    const timestamp = headerValue(headers, "X-Agiled-Webhook-Timestamp")
+    const signature = headerValue(headers, "X-Agiled-Webhook-Signature")
+
+    if (
+      !staticData.webhookSecret ||
+      !timestamp ||
+      !signature ||
+      !isFreshTimestamp(timestamp) ||
+      !signatureMatches({
+        body: rawRequestBody(request),
+        secret: staticData.webhookSecret,
+        signature,
+        timestamp,
+      })
+    ) {
+      throw new Error("Invalid Agiled webhook signature.")
+    }
+
     const event = String(body.event || "agiled.event")
 
     return {
