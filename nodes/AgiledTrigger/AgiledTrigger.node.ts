@@ -52,8 +52,8 @@ function headerValue(headers: IDataObject, name: string) {
 
 function rawRequestBody(request: { body?: unknown; rawBody?: Buffer | string }) {
   if (typeof request.rawBody === "string") return request.rawBody
-  if (Buffer.isBuffer(request.rawBody)) return request.rawBody.toString("utf8")
-  return JSON.stringify(request.body ?? {})
+  if (Buffer.isBuffer(request.rawBody)) return request.rawBody
+  return null
 }
 
 function isFreshTimestamp(timestamp: string) {
@@ -70,16 +70,18 @@ function signatureMatches({
   signature,
   timestamp,
 }: {
-  body: string
+  body: Buffer | string
   secret: string
   signature: string
   timestamp: string
 }) {
   if (!/^[a-f0-9]{64}$/i.test(signature)) return false
 
-  const expected = createHmac("sha256", secret)
-    .update(`${timestamp}.${body}`)
-    .digest("hex")
+  const hmac = createHmac("sha256", secret)
+  hmac.update(timestamp)
+  hmac.update(".")
+  hmac.update(body)
+  const expected = hmac.digest("hex")
   const expectedBuffer = Buffer.from(expected, "hex")
   const signatureBuffer = Buffer.from(signature, "hex")
 
@@ -214,20 +216,26 @@ export class AgiledTrigger implements INodeType {
     const staticData = this.getWorkflowStaticData("node") as StaticData
     const timestamp = headerValue(headers, "X-Agiled-Webhook-Timestamp")
     const signature = headerValue(headers, "X-Agiled-Webhook-Signature")
+    const rawBody = rawRequestBody(request)
 
     if (
       !staticData.webhookSecret ||
       !timestamp ||
       !signature ||
+      rawBody === null ||
       !isFreshTimestamp(timestamp) ||
       !signatureMatches({
-        body: rawRequestBody(request),
+        body: rawBody,
         secret: staticData.webhookSecret,
         signature,
         timestamp,
       })
     ) {
-      throw new Error("Invalid Agiled webhook signature.")
+      throw new Error(
+        rawBody === null
+          ? "Agiled webhook signature verification requires the raw request body."
+          : "Invalid Agiled webhook signature."
+      )
     }
 
     const event = String(body.event || "agiled.event")
