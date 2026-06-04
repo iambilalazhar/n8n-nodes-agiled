@@ -789,18 +789,4 @@ export const triggerEvents: TriggerEventDefinition[] = [
     "Leave Cancelled",
     { id: "leave_123", status: "cancelled" },
   ],
-  [
-    "payroll.approved",
-    null,
-    "payroll_approved",
-    "Payroll Approved",
-    { id: "payroll_123", status: "approved" },
-  ],
-  [
-    "payroll.paid",
-    null,
-    "payroll_paid",
-    "Payroll Paid",
-    { id: "payroll_123", status: "paid" },
-  ],
 ]
