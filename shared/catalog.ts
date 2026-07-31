@@ -720,20 +720,6 @@ export const triggerEvents: TriggerEventDefinition[] = [
     "Deleted Appointment",
   ],
   [
-    "order.created",
-    null,
-    "new_order",
-    "New Order",
-    { id: "order_123", status: "paid", total: 250 },
-  ],
-  [
-    "order.updated",
-    null,
-    "updated_order",
-    "Updated Order",
-    { id: "order_123", status: "paid", total: 250 },
-  ],
-  [
     "employee.created",
     null,
     "new_employee",
