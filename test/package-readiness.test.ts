@@ -25,7 +25,7 @@ describe("community package readiness", () => {
     })
   })
 
-  it("uses the official n8n release checks and packages both node icons", () => {
+  it("uses the official n8n prerelease checks and packages both node icons", () => {
     expect(packageJson.scripts).toMatchObject({
       build: "n8n-node build",
       lint: "n8n-node lint",
