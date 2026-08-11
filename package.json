@@ -1,17 +1,39 @@
 {
   "name": "@agiled/n8n-nodes-agiled",
   "version": "0.1.0",
-  "private": true,
-  "description": "Agiled public API nodes for n8n.",
+  "description": "Official Agiled community nodes for CRM, projects, finance, appointments, and automation in n8n.",
   "keywords": [
-    "n8n-community-node-package"
+    "n8n-community-node-package",
+    "n8n",
+    "agiled",
+    "crm",
+    "business-management",
+    "automation"
   ],
-  "license": "UNLICENSED",
+  "license": "MIT",
+  "homepage": "https://github.com/iambilalazhar/n8n-nodes-agiled#readme",
+  "bugs": {
+    "url": "https://github.com/iambilalazhar/n8n-nodes-agiled/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iambilalazhar/n8n-nodes-agiled.git"
+  },
+  "author": {
+    "name": "Agiled",
+    "email": "hello@agiled.app",
+    "url": "https://agiled.app"
+  },
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "n8n-node build",
+    "dev": "n8n-node dev",
+    "lint": "n8n-node lint",
+    "lint:fix": "n8n-node lint --fix",
+    "prepublishOnly": "n8n-node prerelease",
     "register-client": "bun run scripts/register-client.ts",
-    "test": "vitest run && bun run typecheck",
+    "release": "n8n-node release",
+    "test": "vitest run && npm run typecheck",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "files": [
@@ -19,6 +41,7 @@
   ],
   "n8n": {
     "n8nNodesApiVersion": 1,
+    "strict": true,
     "credentials": [
       "dist/credentials/AgiledOAuth2Api.credentials.js"
     ],
@@ -27,8 +50,11 @@
       "dist/nodes/AgiledTrigger/AgiledTrigger.node.js"
     ]
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "peerDependencies": {
-    "n8n-workflow": ">=2.16.0"
+    "n8n-workflow": "*"
   },
   "peerDependenciesMeta": {
     "n8n-workflow": {
@@ -36,7 +62,12 @@
     }
   },
   "devDependencies": {
+    "@n8n/node-cli": "^0.43.2",
     "@types/node": "^25.1.0",
-    "typescript": "5.9.3"
+    "eslint": "9.39.4",
+    "prettier": "3.8.3",
+    "release-it": "20.2.0",
+    "typescript": "5.9.3",
+    "vitest": "4.1.5"
   }
 }

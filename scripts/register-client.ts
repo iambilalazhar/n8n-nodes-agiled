@@ -1,3 +1,5 @@
+/* eslint-disable @n8n/community-nodes/no-restricted-globals, no-console */
+
 import { AUTH_BASE_URL, OAUTH_SCOPES } from "../shared/constants"
 
 const redirectUri = process.env.N8N_REDIRECT_URI

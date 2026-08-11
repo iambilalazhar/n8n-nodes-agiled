@@ -1,32 +1,103 @@
-# Agiled n8n Nodes
+# Agiled nodes for n8n
 
-This package contains Agiled n8n community nodes backed by the Agiled public API.
+Official [Agiled](https://agiled.app) community nodes for automating CRM,
+projects, finance, appointments, documents, and other business operations in
+[n8n](https://n8n.io).
 
-It includes:
+## Nodes
 
-- `Agiled`: list, get, create, update, delete, and special actions for public API resources.
-- `Agiled Trigger`: webhook-backed triggers for Agiled public API events.
-- `Agiled OAuth2 API`: Better Auth OAuth2 credentials for `https://api.agiled.ai/public/v1`.
+- **Agiled** performs list, get, create, update, delete, and supported special
+  actions across 21 Agiled resources.
+- **Agiled Trigger** starts a workflow from signed Agiled webhook events and
+  manages the webhook subscription when the workflow is activated or removed.
 
-## OAuth Setup
+Supported resources include accounts, appointments, booking pages, contacts,
+deals, documents, document templates, estimates, event types, expenses, files,
+forms, invoices, payments, pipelines, products, projects, tasks, tickets, time
+entries, and users.
 
-Create one OAuth client for the n8n instance, not one client per Agiled user.
+## Installation
 
-1. In n8n, create an Agiled credential and copy the OAuth callback URL.
-2. Register that callback URL:
+### n8n Cloud and verified community-node installations
 
-```bash
-N8N_REDIRECT_URI="https://your-n8n.example.com/rest/oauth2-credential/callback" \
-  bun run --cwd apps/n8n register-client
+After n8n verifies the package, search for **Agiled** in the nodes panel and
+install it there.
+
+### Self-hosted n8n
+
+In **Settings > Community Nodes**, install:
+
+```text
+@agiled/n8n-nodes-agiled
 ```
 
-3. Add the returned `client_id` and `client_secret` to the n8n Agiled credential.
+Restart n8n if the nodes do not appear immediately. Community nodes execute
+inside your n8n instance, so review the package and keep it updated.
 
-The credential uses Agiled's public API token endpoint wrapper so n8n receives a resource-bound access token for `https://api.agiled.ai/public/v1`.
+## Credentials
 
-## Local Validation
+The nodes use OAuth 2.0 authorization code flow. Create one OAuth client for
+each n8n instance:
+
+1. Add an **Agiled OAuth2 API** credential in n8n.
+2. Copy the OAuth Redirect URL displayed by n8n.
+3. From a checkout of this repository, register that exact URL:
+
+   ```bash
+   N8N_REDIRECT_URI="https://your-n8n.example.com/rest/oauth2-credential/callback" \
+     bun run register-client
+   ```
+
+4. Copy the returned client ID and client secret into the n8n credential.
+5. Select **Connect my account**, authorize Agiled, and run the credential test.
+
+Treat the client secret like a password. Do not commit it or paste it into a
+workflow export.
+
+## Usage examples
+
+### List recently updated contacts
+
+1. Add a Manual Trigger.
+2. Add **Agiled** and select **Contact > List Contacts**.
+3. Set the limit and optional email or full-name filters.
+4. Run the workflow. Each contact is returned as a separate n8n item.
+
+### Start a workflow when an invoice is paid
+
+1. Add **Agiled Trigger**.
+2. Select the invoice-paid event.
+3. Activate the workflow. The node creates the signed webhook subscription.
+4. Use the returned `record_id` to fetch or process the invoice.
+
+Deactivating or deleting the workflow removes the webhook subscription.
+Invalid, stale, unsigned, or body-altered webhook requests are rejected before
+workflow data is emitted.
+
+## Compatibility
+
+- n8n 2.x
+- Node.js 20 or later for local development
+- Agiled public API at `https://api.agiled.ai/public/v1`
+
+## Development
 
 ```bash
-bun run --cwd apps/n8n typecheck
-bun run --cwd apps/n8n build
+npm ci
+npm test
+npm run lint
+npm run build
 ```
+
+Use `npm run dev` to load the package in the local n8n development environment.
+Publishing is performed only by the repository's GitHub Actions release
+workflow so npm includes a provenance statement.
+
+## Support
+
+- Package issues: [GitHub Issues](https://github.com/iambilalazhar/n8n-nodes-agiled/issues)
+- Agiled help: [Agiled Knowledge Base](https://help.agiled.app)
+
+## License
+
+[MIT](LICENSE.md)

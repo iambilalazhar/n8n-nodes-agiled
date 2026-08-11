@@ -1,11 +1,5 @@
-const trimTrailingSlash = (value: string) => value.replace(/\/+$/, "")
-
-export const API_BASE_URL = trimTrailingSlash(
-  process.env.AGILED_API_BASE_URL || "https://api.agiled.ai",
-)
-export const AUTH_BASE_URL = trimTrailingSlash(
-  process.env.AGILED_AUTH_BASE_URL || "https://my.agiled.ai/api/auth",
-)
+export const API_BASE_URL = "https://api.agiled.ai"
+export const AUTH_BASE_URL = "https://my.agiled.ai/api/auth"
 export const PUBLIC_API_BASE_PATH = "/public/v1"
 export const OAUTH_SCOPES = [
   "openid",
