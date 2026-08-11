@@ -88,10 +88,6 @@ const multiDropdown = (
   ...dropdown(key, label, dynamic, required),
   list: true,
 })
-const listText = (key: string, label: string, required = false): Field => ({
-  ...text(key, label, required),
-  list: true,
-})
 const date = text
 
 const documentItemsField: Field = {

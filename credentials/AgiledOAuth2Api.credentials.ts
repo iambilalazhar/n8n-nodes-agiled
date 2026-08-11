@@ -1,4 +1,4 @@
-import type { ICredentialType, INodeProperties } from "n8n-workflow"
+import type { Icon, ICredentialType, INodeProperties } from "n8n-workflow"
 import {
   AUTH_BASE_URL,
   OAUTH_SCOPES,
@@ -10,7 +10,12 @@ export class AgiledOAuth2Api implements ICredentialType {
   name = "agiledOAuth2Api"
   extends = ["oAuth2Api"]
   displayName = "Agiled OAuth2 API"
-  documentationUrl = "https://docs.agiled.ai/developers/api"
+  icon: Icon = {
+    dark: "file:../icons/agiled.dark.svg",
+    light: "file:../icons/agiled.svg",
+  }
+  documentationUrl =
+    "https://github.com/iambilalazhar/n8n-nodes-agiled#credentials"
   test = {
     request: {
       method: "GET" as const,

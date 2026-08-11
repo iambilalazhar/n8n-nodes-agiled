@@ -7,7 +7,7 @@ import type {
   IWebhookFunctions,
   IWebhookResponseData,
 } from "n8n-workflow"
-import { NodeConnectionTypes } from "n8n-workflow"
+import { NodeConnectionTypes, NodeOperationError } from "n8n-workflow"
 import { triggerEvents } from "../../shared/catalog"
 import { agiledApiRequest, unwrapData } from "../../shared/transport"
 
@@ -105,13 +105,17 @@ export class AgiledTrigger implements INodeType {
     description: "Start a workflow when Agiled emits selected events",
     displayName: "Agiled Trigger",
     group: ["trigger"],
+    icon: {
+      dark: "file:agiled.dark.svg",
+      light: "file:agiled.svg",
+    },
     inputs: [],
     name: "agiledTrigger",
     outputs: [NodeConnectionTypes.Main],
     properties: [
       {
-        default: [],
         displayName: "Events",
+        default: [],
         name: "events",
         options: triggerEvents.map(([event, , , label]) => ({
           name: label,
@@ -121,6 +125,8 @@ export class AgiledTrigger implements INodeType {
         type: "multiOptions",
       },
     ],
+    subtitle: '={{$parameter["events"].join(", ")}}',
+    usableAsTool: true,
     version: 1,
     webhooks: [
       {
@@ -176,7 +182,10 @@ export class AgiledTrigger implements INodeType {
         const webhookSecret =
           typeof subscription.secret === "string" ? subscription.secret : ""
         if (!webhookSecret) {
-          throw new Error("Agiled did not return a webhook secret.")
+          throw new NodeOperationError(
+            this.getNode(),
+            "Agiled did not return a webhook secret.",
+          )
         }
 
         staticData.subscriptionId = String(subscription.id)
@@ -231,10 +240,11 @@ export class AgiledTrigger implements INodeType {
         timestamp,
       })
     ) {
-      throw new Error(
+      throw new NodeOperationError(
+        this.getNode(),
         rawBody === null
           ? "Agiled webhook signature verification requires the raw request body."
-          : "Invalid Agiled webhook signature."
+          : "Invalid Agiled webhook signature.",
       )
     }
 

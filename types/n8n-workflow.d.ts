@@ -7,6 +7,15 @@ declare module "n8n-workflow" {
 
   export interface INodeExecutionData {
     json: IDataObject
+    pairedItem?: { item: number }
+  }
+
+  export type Icon =
+    | `file:${string}`
+    | { dark: `file:${string}`; light: `file:${string}` }
+
+  export class NodeOperationError extends Error {
+    constructor(node: unknown, message: string)
   }
 
   export interface INodePropertyOptions {
@@ -49,6 +58,7 @@ declare module "n8n-workflow" {
 
   export interface IExecuteFunctions {
     getInputData(): INodeExecutionData[]
+    getNode(): unknown
     getNodeParameter(
       parameterName: string,
       itemIndex: number,
@@ -66,6 +76,7 @@ declare module "n8n-workflow" {
   }
 
   export interface IHookFunctions {
+    getNode(): unknown
     getNodeParameter(parameterName: string): unknown
     getNodeWebhookUrl(name: string): string
     getWorkflowStaticData(type: "node"): IDataObject
@@ -77,6 +88,7 @@ declare module "n8n-workflow" {
   export interface IWebhookFunctions {
     getBodyData(): IDataObject
     getHeaderData(): IDataObject
+    getNode(): unknown
     getRequestObject(): {
       body?: unknown
       rawBody?: Buffer | string

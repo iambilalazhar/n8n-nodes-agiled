@@ -1,10 +1,15 @@
 import { createHmac } from "node:crypto"
 import { describe, expect, it, vi } from "vitest"
 
+const { MockNodeOperationError } = vi.hoisted(() => ({
+  MockNodeOperationError: class extends Error {},
+}))
+
 vi.mock("n8n-workflow", () => ({
   NodeConnectionTypes: {
     Main: "main",
   },
+  NodeOperationError: MockNodeOperationError,
 }))
 
 import { AgiledTrigger } from "../nodes/AgiledTrigger/AgiledTrigger.node"
@@ -38,6 +43,7 @@ function webhookContext({
     }),
     getRequestObject: () =>
       rawBody === undefined ? { body } : { body, rawBody },
+    getNode: () => ({ name: "Agiled Trigger" }),
     getWorkflowStaticData: () => ({ webhookSecret: secret }),
     helpers: {
       returnJsonArray: (items: Record<string, unknown>[]) =>
@@ -57,7 +63,7 @@ describe("AgiledTrigger webhook signature verification", () => {
       trigger.webhook.call(
         webhookContext({ body, signature, timestamp }) as never
       )
-    ).rejects.toThrow("raw request body")
+    ).rejects.toBeInstanceOf(MockNodeOperationError)
   })
 
   it("verifies signatures against the exact raw request body bytes", async () => {
@@ -76,5 +82,44 @@ describe("AgiledTrigger webhook signature verification", () => {
     ).resolves.toMatchObject({
       workflowData: [[{ json: { event: "contact.created", id: "contact_1" } }]],
     })
+  })
+})
+
+describe("AgiledTrigger webhook lifecycle", () => {
+  it("creates and removes a subscription with matching static data", async () => {
+    const trigger = new AgiledTrigger()
+    const staticData: Record<string, unknown> = {}
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce({ data: { id: "sub_1", secret: "secret_1" } })
+      .mockResolvedValueOnce({})
+    const context = {
+      getNode: () => ({ name: "Agiled Trigger" }),
+      getNodeParameter: () => ["contact.created"],
+      getNodeWebhookUrl: () => "https://n8n.example/webhook/agiled",
+      getWorkflowStaticData: () => staticData,
+      helpers: { httpRequestWithAuthentication: request },
+    }
+
+    await expect(
+      trigger.webhookMethods.default.create.call(context as never),
+    ).resolves.toBe(true)
+    expect(staticData).toEqual({
+      events: ["contact.created"],
+      subscriptionId: "sub_1",
+      webhookSecret: "secret_1",
+    })
+
+    await expect(
+      trigger.webhookMethods.default.delete.call(context as never),
+    ).resolves.toBe(true)
+    expect(request).toHaveBeenLastCalledWith(
+      "agiledOAuth2Api",
+      expect.objectContaining({
+        method: "DELETE",
+        url: "https://api.agiled.ai/public/v1/webhook-subscriptions/sub_1",
+      }),
+    )
+    expect(staticData).toEqual({})
   })
 })

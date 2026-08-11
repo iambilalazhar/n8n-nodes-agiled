@@ -8,7 +8,7 @@ import type {
   INodeTypeDescription,
   INodeProperties,
 } from "n8n-workflow"
-import { NodeConnectionTypes } from "n8n-workflow"
+import { NodeConnectionTypes, NodeOperationError } from "n8n-workflow"
 import {
   resources,
   type Field,
@@ -146,7 +146,7 @@ function parameterName(operation: string, fieldKey: string) {
   return `${operation}_${fieldKey}`
 }
 
-function parseJsonField(key: string, value: unknown) {
+function parseJsonField(node: unknown, key: string, value: unknown) {
   if (typeof value !== "string") {
     return value
   }
@@ -159,8 +159,12 @@ function parseJsonField(key: string, value: unknown) {
   try {
     return JSON.parse(trimmed)
   } catch {
-    throw new Error(`${key} must be valid JSON.`)
+    throw new NodeOperationError(node, `${key} must be valid JSON.`)
   }
+}
+
+function outputItem(json: IDataObject, itemIndex: number): INodeExecutionData {
+  return { json, pairedItem: { item: itemIndex } }
 }
 
 function normalizeFieldValue(field: Field, value: unknown) {
@@ -331,8 +335,8 @@ function operationOptions(resourceKey: ResourceKey) {
 
 function operationProperty(resourceKey: ResourceKey) {
   return {
-    default: "list",
     displayName: "Operation",
+    default: "list",
     displayOptions: {
       show: {
         resource: [resourceKey],
@@ -356,8 +360,8 @@ function specialField(
   loadOptionsMethod?: string,
 ) {
   return {
-    default: type === "boolean" ? false : "",
     displayName: label,
+    default: type === "boolean" ? false : "",
     displayOptions: {
       show: {
         operation: [operation],
@@ -374,8 +378,8 @@ function specialField(
 function buildProperties() {
   const properties: INodeProperties[] = [
     {
-      default: "contacts",
       displayName: "Resource",
+      default: "contacts",
       name: "resource",
       noDataExpression: true,
       options: (Object.keys(resources) as ResourceKey[]).map((key) => ({
@@ -393,9 +397,9 @@ function buildProperties() {
 
     properties.push(
       {
-        default: 50,
-        description: "Maximum records to return.",
         displayName: "Limit",
+        default: 50,
+        description: "Max number of results to return",
         displayOptions: {
           show: {
             operation: ["list"],
@@ -591,7 +595,11 @@ function readInputFields(
 
   for (const key of resource.jsonFields ?? []) {
     if (key in input) {
-      input[key] = parseJsonField(key, input[key]) as JsonObject[string]
+      input[key] = parseJsonField(
+        this.getNode(),
+        key,
+        input[key],
+      ) as JsonObject[string]
     }
   }
 
@@ -623,10 +631,15 @@ export class Agiled implements INodeType {
     description: "Use the Agiled public API",
     displayName: "Agiled",
     group: ["transform"],
+    icon: {
+      dark: "file:agiled.dark.svg",
+      light: "file:agiled.svg",
+    },
     inputs: [NodeConnectionTypes.Main],
     name: "agiled",
     outputs: [NodeConnectionTypes.Main],
     properties: buildProperties(),
+    subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
     usableAsTool: true,
     version: 1,
   }
@@ -663,47 +676,47 @@ export class Agiled implements INodeType {
           listQuery.call(this, itemIndex, resourceKey),
         )
         for (const record of unwrapList(response)) {
-          returnData.push({ json: record as IDataObject })
+          returnData.push(outputItem(record as IDataObject, itemIndex))
         }
         continue
       }
 
       if (operation === "get") {
         const id = this.getNodeParameter("get_record_id", itemIndex) as string
-        returnData.push({
-          json: unwrapData(
+        returnData.push(
+          outputItem(unwrapData(
             await agiledApiRequest.call(this, "GET", `${resource.path}/${id}`),
-          ) as IDataObject,
-        })
+          ) as IDataObject, itemIndex),
+        )
         continue
       }
 
       if (operation === "create") {
-        returnData.push({
-          json: unwrapData(
+        returnData.push(
+          outputItem(unwrapData(
             await agiledApiRequest.call(
               this,
               "POST",
               resource.path,
               readInputFields.call(this, itemIndex, resourceKey, "create"),
             ),
-          ) as IDataObject,
-        })
+          ) as IDataObject, itemIndex),
+        )
         continue
       }
 
       if (operation === "update") {
         const id = this.getNodeParameter("update_record_id", itemIndex) as string
-        returnData.push({
-          json: unwrapData(
+        returnData.push(
+          outputItem(unwrapData(
             await agiledApiRequest.call(
               this,
               "PATCH",
               `${resource.path}/${id}`,
               readInputFields.call(this, itemIndex, resourceKey, "update"),
             ),
-          ) as IDataObject,
-        })
+          ) as IDataObject, itemIndex),
+        )
         continue
       }
 
@@ -714,7 +727,9 @@ export class Agiled implements INodeType {
           "DELETE",
           `${resource.path}/${id}`,
         )
-        returnData.push({ json: (unwrapData(deleted) || { id }) as IDataObject })
+        returnData.push(
+          outputItem((unwrapData(deleted) || { id }) as IDataObject, itemIndex),
+        )
         continue
       }
 
@@ -723,6 +738,7 @@ export class Agiled implements INodeType {
           booking_page_slug: this.getNodeParameter("booking_page_slug", itemIndex),
           event_type_slug: this.getNodeParameter("event_type_slug", itemIndex),
           intake_payload: parseJsonField(
+            this.getNode(),
             "intake_payload",
             this.getNodeParameter("intake_payload", itemIndex, undefined),
           ),
@@ -733,18 +749,18 @@ export class Agiled implements INodeType {
           start_time: this.getNodeParameter("start_time", itemIndex),
           timezone: this.getNodeParameter("timezone", itemIndex, undefined),
         })
-        returnData.push({
-          json: unwrapData(
+        returnData.push(
+          outputItem(unwrapData(
             await agiledApiRequest.call(this, "POST", "/bookings", payload),
-          ) as IDataObject,
-        })
+          ) as IDataObject, itemIndex),
+        )
         continue
       }
 
       if (operation === "cancelAppointment") {
         const id = this.getNodeParameter("appointment_id", itemIndex) as string
-        returnData.push({
-          json: unwrapData(
+        returnData.push(
+          outputItem(unwrapData(
             await agiledApiRequest.call(
               this,
               "POST",
@@ -753,8 +769,8 @@ export class Agiled implements INodeType {
                 reason: this.getNodeParameter("cancel_reason", itemIndex, undefined),
               }),
             ),
-          ) as IDataObject,
-        })
+          ) as IDataObject, itemIndex),
+        )
         continue
       }
 
@@ -763,8 +779,8 @@ export class Agiled implements INodeType {
           "reschedule_appointment_id",
           itemIndex,
         ) as string
-        returnData.push({
-          json: unwrapData(
+        returnData.push(
+          outputItem(unwrapData(
             await agiledApiRequest.call(
               this,
               "POST",
@@ -787,15 +803,15 @@ export class Agiled implements INodeType {
                 ),
               }),
             ),
-          ) as IDataObject,
-        })
+          ) as IDataObject, itemIndex),
+        )
         continue
       }
 
       if (operation === "sendDocument") {
         const id = this.getNodeParameter("send_document_id", itemIndex) as string
-        returnData.push({
-          json: unwrapData(
+        returnData.push(
+          outputItem(unwrapData(
             await agiledApiRequest.call(
               this,
               "POST",
@@ -808,27 +824,31 @@ export class Agiled implements INodeType {
                 to: splitList(this.getNodeParameter("send_to", itemIndex)),
               }),
             ),
-          ) as IDataObject,
-        })
+          ) as IDataObject, itemIndex),
+        )
         continue
       }
 
       if (operation === "submitForm") {
         const id = this.getNodeParameter("submit_form_id", itemIndex) as string
-        returnData.push({
-          json: unwrapData(
+        returnData.push(
+          outputItem(unwrapData(
             await agiledApiRequest.call(this, "POST", `/forms/${id}/submissions`, {
               data: parseJsonField(
+                this.getNode(),
                 "submission_data",
                 this.getNodeParameter("submission_data", itemIndex),
               ),
             }),
-          ) as IDataObject,
-        })
+          ) as IDataObject, itemIndex),
+        )
         continue
       }
 
-      throw new Error(`Unsupported ${resources[resourceKey].noun} operation.`)
+      throw new NodeOperationError(
+        this.getNode(),
+        `Unsupported ${resources[resourceKey].noun} operation.`,
+      )
     }
 
     return [returnData]
