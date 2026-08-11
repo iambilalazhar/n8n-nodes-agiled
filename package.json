@@ -1,6 +1,6 @@
 {
   "name": "@agiled/n8n-nodes-agiled",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Official Agiled community nodes for CRM, projects, finance, appointments, and automation in n8n.",
   "keywords": [
     "n8n-community-node-package",

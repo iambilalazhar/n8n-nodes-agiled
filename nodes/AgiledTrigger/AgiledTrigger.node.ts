@@ -126,7 +126,7 @@ export class AgiledTrigger implements INodeType {
       },
     ],
     subtitle: '={{$parameter["events"].join(", ")}}',
-    usableAsTool: true,
+    usableAsTool: false,
     version: 1,
     webhooks: [
       {

@@ -85,6 +85,14 @@ describe("AgiledTrigger webhook signature verification", () => {
   })
 })
 
+describe("AgiledTrigger metadata", () => {
+  it("does not expose trigger nodes as AI tools", () => {
+    const trigger = new AgiledTrigger()
+
+    expect(trigger.description.usableAsTool).not.toBe(true)
+  })
+})
+
 describe("AgiledTrigger webhook lifecycle", () => {
   it("creates and removes a subscription with matching static data", async () => {
     const trigger = new AgiledTrigger()
