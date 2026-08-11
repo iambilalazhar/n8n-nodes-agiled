@@ -36,8 +36,8 @@ inside your n8n instance, so review the package and keep it updated.
 
 ## Credentials
 
-The nodes use OAuth 2.0 authorization code flow. Create one OAuth client for
-each n8n instance:
+The nodes use OAuth 2.0 authorization code flow with PKCE. Create one public
+OAuth client for each n8n instance:
 
 1. Add an **Agiled OAuth2 API** credential in n8n.
 2. Copy the OAuth Redirect URL displayed by n8n.
@@ -48,11 +48,8 @@ each n8n instance:
      bun run register-client
    ```
 
-4. Copy the returned client ID and client secret into the n8n credential.
+4. Copy the returned client ID into the n8n credential.
 5. Select **Connect my account**, authorize Agiled, and run the credential test.
-
-Treat the client secret like a password. Do not commit it or paste it into a
-workflow export.
 
 ## Usage examples
 

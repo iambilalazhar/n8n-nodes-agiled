@@ -17,7 +17,7 @@ const response = await fetch(`${AUTH_BASE_URL}/oauth2/register`, {
     redirect_uris: [redirectUri],
     response_types: ["code"],
     scope: OAUTH_SCOPES,
-    token_endpoint_auth_method: "client_secret_post",
+    token_endpoint_auth_method: "none",
   }),
   headers: {
     "content-type": "application/json",
@@ -35,4 +35,8 @@ if (!response.ok) {
   )
 }
 
-console.log(JSON.stringify(payload, null, 2))
+if (typeof payload.client_id !== "string") {
+  throw new Error("Agiled did not return an OAuth client ID.")
+}
+
+console.log(payload.client_id)

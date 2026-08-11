@@ -28,7 +28,7 @@ export class AgiledOAuth2Api implements ICredentialType {
       displayName: "Grant Type",
       name: "grantType",
       type: "hidden",
-      default: "authorizationCode",
+      default: "pkce",
     },
     {
       displayName: "Authorization URL",
@@ -41,6 +41,16 @@ export class AgiledOAuth2Api implements ICredentialType {
       name: "accessTokenUrl",
       type: "hidden",
       default: `${AUTH_BASE_URL}/oauth2/public-api-token`,
+    },
+    {
+      displayName: "Client Secret",
+      name: "clientSecret",
+      type: "hidden",
+      default: "",
+      required: false,
+      typeOptions: {
+        password: true,
+      },
     },
     {
       displayName: "Scope",
