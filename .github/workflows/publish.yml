@@ -5,22 +5,76 @@ on:
     tags:
       - "*.*.*"
 
+permissions: {}
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  publish:
+  verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.15.0
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm audit --audit-level=critical
+      - run: npm audit signatures
+      - run: npm test
+      - run: npm run lint
+      - run: npm run build
+      - name: Verify tag and package version
+        run: |
+          package_version=$(node -p "require('./package.json').version")
+          test "${GITHUB_REF_NAME#v}" = "$package_version"
+      - run: npm run prepublishOnly
+        env:
+          RELEASE_MODE: "true"
+      - name: Pack the reviewed artifact
+        run: |
+          npm pack --ignore-scripts
+          shasum -a 256 *.tgz > SHA256SUMS
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: npm-package
+          path: |
+            *.tgz
+            SHA256SUMS
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: npm-publish
     permissions:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          node-version: 24
-          cache: npm
-      - run: npm ci
-      - name: Release
+          name: npm-package
+          path: release
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.15.0
+          package-manager-cache: false
+      - name: Install staged-publishing npm release
+        run: npm install --global npm@12.0.2 --ignore-scripts
+      - name: Verify artifact integrity
+        working-directory: release
+        run: shasum -a 256 -c SHA256SUMS
+      - name: Stage release on npm
         run: |
-          [ -n "$NPM_TOKEN" ] && npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN"
-          npm run release
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          npm --version
+          npm stage publish release/*.tgz --access public --provenance
